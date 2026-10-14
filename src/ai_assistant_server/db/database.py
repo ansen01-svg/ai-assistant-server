@@ -1,23 +1,18 @@
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from collections.abc import AsyncGenerator
 
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_assistant"
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from ai_assistant_server.core.config import settings
 
 engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,
+    settings.database_url,
+    echo=settings.debug,
+    pool_pre_ping=True,
 )
 
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
