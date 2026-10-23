@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ai_assistant_server.db.base import BaseTable
@@ -23,5 +24,6 @@ class Message(BaseTable):
     model: Mapped[str | None] = mapped_column(String(100))
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
