@@ -23,4 +23,4 @@ RUN uv sync --locked --no-dev
 RUN useradd --create-home appuser
 USER appuser
 
-CMD ["sh", "-c", "uvicorn ai_assistant_server.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn ai_assistant_server.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
