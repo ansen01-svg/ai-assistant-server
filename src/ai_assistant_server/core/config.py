@@ -19,9 +19,13 @@ class Settings(BaseSettings):
 
     jwt_secret_key: SecretStr
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 60 * 24 * 7  # 1 day
+    auth_cookie_name: str = "access_token"
+    cookie_secure: bool = False  # True in production (HTTPS)
 
     anthropic_api_key: SecretStr
+    max_output_tokens: int = 4096
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
 
