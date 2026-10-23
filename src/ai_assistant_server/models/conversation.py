@@ -7,6 +7,8 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ai_assistant_server.db.base import BaseTable
+from sqlalchemy import ForeignKey, Index, String
+
 
 if TYPE_CHECKING:
     from .message import Message
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
 
 class Conversation(BaseTable):
     __tablename__ = "conversations"
+    __table_args__ = (Index("ix_conversations_user_id_updated_at", "user_id", "updated_at"),)
+
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
