@@ -34,13 +34,21 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
                 history, model=data.model, system=chat_service.SYSTEM_PROMPT
             ):
                 if isinstance(chunk, LLMResponse):
-                    message = await chat_service.save_assistant_message(conversation_id, chunk)
-                    yield sse("done", {
-                        "message_id": str(message.id),
-                        "input_tokens": chunk.input_tokens,
-                        "output_tokens": chunk.output_tokens,
-                        "stop_reason": chunk.stop_reason,
-                    })
+                    message = await chat_service.save_assistant_message(
+                        conversation_id, chunk
+                    )
+                    yield sse(
+                        "done",
+                        {
+                            "message_id": str(message.id),
+                            "input_tokens": chunk.input_tokens,
+                            "output_tokens": chunk.output_tokens,
+                            "stop_reason": chunk.stop_reason,
+                            "cost_usd": float(message.cost_usd)
+                            if message.cost_usd is not None
+                            else None,
+                        },
+                    )
                 else:
                     yield sse("delta", {"text": chunk})
         except Exception:

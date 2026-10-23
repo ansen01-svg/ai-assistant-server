@@ -23,6 +23,7 @@ class MessageResponse(BaseModel):
     model: str | None
     input_tokens: int | None
     output_tokens: int | None
+    cost_usd: float | None
     created_at: datetime
 
 
