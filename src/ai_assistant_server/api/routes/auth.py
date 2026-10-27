@@ -28,7 +28,7 @@ async def register(data: RegisterRequest, db: DbSession, response: Response):
     try:
         user = await auth_service.register_user(db, data)
     except auth_service.EmailAlreadyRegisteredError:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
     set_auth_cookie(response, user.id)  # log in right after sign-up
     return user
 

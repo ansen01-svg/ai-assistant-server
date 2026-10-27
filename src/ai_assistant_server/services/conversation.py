@@ -1,6 +1,7 @@
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,11 +37,14 @@ async def get_conversation(db: AsyncSession, user_id: UUID, conversation_id: UUI
 
 
 async def delete_conversation(db: AsyncSession, user_id: UUID, conversation_id: UUID) -> None:
-    result = await db.execute(
-        delete(Conversation).where(
-            Conversation.id == conversation_id,
-            Conversation.user_id == user_id,
-        )
+    result = cast(
+        "CursorResult[Any]",
+        await db.execute(
+            delete(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
+        ),
     )
     if result.rowcount == 0:
         raise ConversationNotFoundError

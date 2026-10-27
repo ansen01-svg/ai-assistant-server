@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Numeric, String, Text
@@ -19,7 +19,7 @@ class Message(BaseTable):
     conversation_id: Mapped[UUID] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
-    role: Mapped[str] = mapped_column(String(30))  # "user" | "assistant"
+    role: Mapped[Literal["user", "assistant"]] = mapped_column(String(30), nullable=False)
     content: Mapped[str] = mapped_column(Text)
     model: Mapped[str | None] = mapped_column(String(100))
     input_tokens: Mapped[int | None]
