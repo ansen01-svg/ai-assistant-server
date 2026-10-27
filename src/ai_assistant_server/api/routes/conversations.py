@@ -27,7 +27,7 @@ async def get_conversation(conversation_id: UUID, user: CurrentUser, db: DbSessi
     try:
         return await conversation_service.get_conversation(db, user.id, conversation_id)
     except conversation_service.ConversationNotFoundError:
-        raise NOT_FOUND
+        raise NOT_FOUND from None
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -35,4 +35,4 @@ async def delete_conversation(conversation_id: UUID, user: CurrentUser, db: DbSe
     try:
         await conversation_service.delete_conversation(db, user.id, conversation_id)
     except conversation_service.ConversationNotFoundError:
-        raise NOT_FOUND
+        raise NOT_FOUND from None

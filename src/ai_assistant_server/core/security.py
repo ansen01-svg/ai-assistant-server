@@ -43,5 +43,5 @@ def decode_access_token(token: str) -> UUID | None:
             algorithms=[settings.jwt_algorithm],
         )
         return UUID(payload["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
+    except jwt.InvalidTokenError, KeyError, ValueError:
         return None

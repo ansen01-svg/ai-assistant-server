@@ -1,7 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ConversationTitle(BaseModel):
+    title: str = Field(
+        max_length=60,
+        description="3-6 word title. No quotes, no trailing punctuation.",
+    )
 
 
 class ConversationSummary(BaseModel):

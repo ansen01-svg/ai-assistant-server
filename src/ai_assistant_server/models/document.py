@@ -15,9 +15,7 @@ if TYPE_CHECKING:
 class Document(BaseTable):
     __tablename__ = "documents"
 
-    user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(255))
     file_path: Mapped[str | None] = mapped_column(String(500))
     mime_type: Mapped[str | None] = mapped_column(String(100))
