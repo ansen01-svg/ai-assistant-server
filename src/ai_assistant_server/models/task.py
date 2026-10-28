@@ -1,23 +1,26 @@
-from __future__ import annotations
+import uuid
+from datetime import date
+from typing import TYPE_CHECKING, Literal
 
-from typing import TYPE_CHECKING
-from uuid import UUID
-
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Date, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ai_assistant_server.db.base import BaseTable
 
 if TYPE_CHECKING:
-    from .user import User
+    from ai_assistant_server.models.user import User
 
 
 class Task(BaseTable):
     __tablename__ = "tasks"
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(30), default="pending")
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    priority: Mapped[Literal["low", "medium", "high"]] = mapped_column(String(10), default="medium")
+    status: Mapped[Literal["todo", "done"]] = mapped_column(String(10), default="todo")
 
     user: Mapped[User] = relationship(back_populates="tasks")
