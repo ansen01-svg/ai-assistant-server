@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -88,3 +88,22 @@ async def delete_task(db: AsyncSession, user_id: uuid.UUID, task_id: uuid.UUID) 
     task = await get_task(db, user_id, task_id)
     await db.delete(task)
     await db.commit()
+
+
+async def search_tasks(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    query: str | None = None,
+    status: str | None = None,
+    due_before: date | None = None,
+) -> Sequence[Task]:
+    stmt = select(Task).where(Task.user_id == user_id)
+    if query:
+        stmt = stmt.where(Task.title.icontains(query, autoescape=True))  # escapes % and _
+    if status:
+        stmt = stmt.where(Task.status == status)
+    if due_before:
+        stmt = stmt.where(Task.due_date <= due_before)
+    stmt = stmt.order_by(Task.status.desc(), Task.due_date.asc().nulls_last()).limit(20)
+    return (await db.scalars(stmt)).all()

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ai_assistant_server.db.base import BaseTable
@@ -25,5 +26,7 @@ class Message(BaseTable):
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
+    # Full API messages for a turn that used tools; None for plain replies
+    tool_messages: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
