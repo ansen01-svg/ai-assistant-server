@@ -7,10 +7,25 @@ from httpx import AsyncClient
 
 from ai_assistant_server.api.routes import chat as chat_route
 from ai_assistant_server.services import chat as chat_service
-from ai_assistant_server.services.llm import LLMResponse
+from ai_assistant_server.services.llm import LLMResponse, ToolCall
 from tests.conftest import MakeClient
 
 URL = "/api/v1/chat/stream"
+
+# One tool turn as stored in Message.tool_messages
+TOOL_MESSAGES: list[Any] = [
+    {
+        "role": "assistant",
+        "content": [{"type": "tool_use", "id": "t1", "name": "search_tasks", "input": {}}],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "tool_result", "tool_use_id": "t1", "content": "[]", "is_error": False}
+        ],
+    },
+    {"role": "assistant", "content": [{"type": "text", "text": "No tasks."}]},
+]
 
 
 def parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
@@ -26,9 +41,7 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> list[list[Any]]:
     """Replaces Claude. Returns the history the route sent on each request."""
     histories: list[list[Any]] = []
 
-    async def fake_stream_chat(
-        history: list[Any], *, model: str, system: str
-    ) -> AsyncIterator[str | LLMResponse]:
+    async def fake_stream_chat(history, *, model, system, **_kwargs):
         histories.append(list(history))
         yield "Hello"
         yield " there"
@@ -84,6 +97,44 @@ async def test_continue_sends_history(user_client: AsyncClient, fake_llm: list[l
     assert [m["content"] for m in fake_llm[-1]] == ["Hi", "Hello there", "And again"]
 
 
+async def test_tool_turn_saved_and_replayed(
+    user_client: AsyncClient, fake_llm: list[list[Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def tool_stream_chat(history, *, model, system, **_kwargs):
+        fake_llm.append(list(history))
+        yield ToolCall(name="search_tasks", input={})
+        yield "No tasks."
+        yield LLMResponse(
+            text="No tasks.",
+            model=model,
+            input_tokens=10,
+            output_tokens=5,
+            stop_reason="end_turn",
+            tool_messages=TOOL_MESSAGES,
+        )
+
+    monkeypatch.setattr(chat_route, "stream_chat", tool_stream_chat)
+
+    r = await user_client.post(URL, json={"message": "My tasks?"})
+    events = parse_sse(r.text)
+    assert [e for e, _ in events] == ["start", "tool", "delta", "title", "done"]
+    assert events[1][1] == {"name": "search_tasks", "input": {}}
+    conversation_id = events[0][1]["conversation_id"]
+
+    # UI still sees plain text
+    r = await user_client.get(f"/api/v1/conversations/{conversation_id}")
+    messages = [(m["role"], m["content"]) for m in r.json()["messages"]]
+    assert messages == [("user", "My tasks?"), ("assistant", "No tasks.")]
+
+    # Next request replays the full tool exchange
+    await user_client.post(URL, json={"message": "Thanks", "conversation_id": conversation_id})
+    assert fake_llm[-1] == [
+        {"role": "user", "content": "My tasks?"},
+        *TOOL_MESSAGES,
+        {"role": "user", "content": "Thanks"},
+    ]
+
+
 async def test_conversation_isolation(
     user_client: AsyncClient, make_client: MakeClient, fake_llm: list[list[Any]]
 ) -> None:
@@ -101,7 +152,7 @@ async def test_llm_failure_sends_error_event(
     user_client: AsyncClient, fake_llm: list[list[Any]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     async def broken_stream_chat(
-        history: list[Any], *, model: str, system: str
+        history: list[Any], *, model: str, system: str, **_kwargs: Any
     ) -> AsyncIterator[str]:
         raise RuntimeError("API down")
         yield ""  # makes this an async generator

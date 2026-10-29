@@ -1,6 +1,9 @@
 import asyncio
 import json
 import logging
+from datetime import datetime
+from functools import partial
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -8,7 +11,8 @@ from fastapi.responses import StreamingResponse
 from ai_assistant_server.api.dependencies import CurrentUser, DbSession
 from ai_assistant_server.schemas.chat import ChatRequest
 from ai_assistant_server.services import chat as chat_service
-from ai_assistant_server.services.llm import LLMResponse, stream_chat
+from ai_assistant_server.services.llm import LLMResponse, ToolCall, stream_chat
+from ai_assistant_server.services.tools import TOOLS, run_tool
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +32,10 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
 
     conversation_id = conversation.id
     is_new = data.conversation_id is None
+    # Bind the user here: tools must only ever touch this user's data
+    tool_runner = partial(run_tool, user.id)
+    today = datetime.now(ZoneInfo(data.timezone))
+    system = f"{chat_service.SYSTEM_PROMPT}\n\nToday is {today:%A, %Y-%m-%d}."
 
     async def event_stream():
         # Generate the title in parallel with the reply
@@ -37,7 +45,11 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
         yield sse("start", {"conversation_id": str(conversation_id)})
         try:
             async for chunk in stream_chat(
-                history, model=data.model, system=chat_service.SYSTEM_PROMPT
+                history,
+                model=data.model,
+                system=system,
+                tools=TOOLS,
+                run_tool=tool_runner,
             ):
                 if isinstance(chunk, LLMResponse):
                     title = await title_task if title_task else None
@@ -60,6 +72,8 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
                             "stop_reason": chunk.stop_reason,
                         },
                     )
+                elif isinstance(chunk, ToolCall):
+                    yield sse("tool", {"name": chunk.name, "input": chunk.input})
                 else:
                     yield sse("delta", {"text": chunk})
         except Exception:

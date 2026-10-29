@@ -1,4 +1,5 @@
 import logging
+from typing import cast as typing_cast
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -14,10 +15,12 @@ from ai_assistant_server.services.pricing import calculate_cost
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "You are a helpful AI assistant. Answer clearly and concisely. "
-    "Use Markdown when it improves readability."
-)
+SYSTEM_PROMPT = """You are Bobby, a helpful assistant.
+You can read and change the user's tasks with tools.
+- Before updating a task, find it with search_tasks. Never guess IDs.
+- If several tasks match, list them and ask which one the user means.
+- After a change, confirm briefly what you did."""
+
 HISTORY_LIMIT = 50
 
 TITLE_MODEL = "claude-haiku-5-5"
@@ -58,9 +61,12 @@ async def prepare_chat(
         .order_by(Message.created_at.desc())
         .limit(HISTORY_LIMIT)
     )
-    history: list[MessageParam] = [
-        {"role": m.role, "content": m.content} for m in reversed(rows.all())
-    ]
+    history: list[MessageParam] = []
+    for m in reversed(rows.all()):
+        if m.tool_messages:
+            history.extend(typing_cast(list[MessageParam], m.tool_messages))
+        else:
+            history.append({"role": m.role, "content": m.content})
 
     # The API requires the first message to be from the user
     while history and history[0]["role"] != "user":
@@ -78,6 +84,7 @@ async def save_assistant_message(
             conversation_id=conversation_id,
             role="assistant",
             content=response.text,
+            tool_messages=response.tool_messages,
             model=response.model,
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
