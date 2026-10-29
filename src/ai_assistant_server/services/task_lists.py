@@ -42,3 +42,18 @@ async def delete_task_list(db: AsyncSession, user_id: uuid.UUID, list_id: uuid.U
     task_list = await get_task_list(db, user_id, list_id)
     await db.delete(task_list)  # DB cascade deletes its tasks
     await db.commit()
+
+
+async def create_task_list(db: AsyncSession, user_id: uuid.UUID, name: str) -> TaskList:
+    task_list = await add_task_list(db, user_id, name)
+    await db.commit()
+    return task_list
+
+
+async def rename_task_list(
+    db: AsyncSession, user_id: uuid.UUID, list_id: uuid.UUID, name: str
+) -> TaskList:
+    task_list = await get_task_list(db, user_id, list_id)
+    task_list.name = name
+    await db.commit()
+    return task_list

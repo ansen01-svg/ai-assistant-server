@@ -28,7 +28,7 @@ class LLMResponse:
     tool_messages: list[MessageParam] | None = None
 
 
-MAX_TOOL_ROUNDS = 5
+MAX_TOOL_ROUNDS = 8
 
 
 type ToolRunner = Callable[[str, dict[str, Any]], Awaitable[tuple[str, bool]]]
