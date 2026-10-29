@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 class Task(BaseTable):
     __tablename__ = "tasks"
 
+    list_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("task_lists.id", ondelete="CASCADE"), index=True
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )

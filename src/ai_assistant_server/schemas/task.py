@@ -1,9 +1,9 @@
 import uuid
 from datetime import date
-from typing import Literal
+from typing import Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ExtractedTask(BaseModel):
@@ -14,6 +14,9 @@ class ExtractedTask(BaseModel):
 
 
 class ExtractedTasks(BaseModel):
+    list_name: str = Field(
+        description="Short name (2-5 words) for the project or topic these tasks belong to"
+    )
     tasks: list[ExtractedTask]
 
 
@@ -44,6 +47,14 @@ class TaskCreate(BaseModel):
 
 class TaskBulkCreate(BaseModel):
     tasks: list[TaskCreate] = Field(min_length=1, max_length=50)
+    list_id: uuid.UUID | None = None
+    new_list_name: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def check_target(self) -> Self:
+        if self.list_id and self.new_list_name:
+            raise ValueError("Use either list_id or new_list_name, not both")
+        return self
 
 
 class TaskUpdate(BaseModel):
@@ -54,6 +65,7 @@ class TaskRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    list_id: uuid.UUID | None
     title: str
     notes: str | None
     due_date: date | None

@@ -14,6 +14,7 @@ from ai_assistant_server.schemas.task import (
 )
 from ai_assistant_server.services import tasks as task_service
 from ai_assistant_server.services.llm import LLMError
+from ai_assistant_server.services.task_lists import TaskListNotFoundError
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 _current_user = Depends(get_current_user)
@@ -25,8 +26,12 @@ def _not_found() -> HTTPException:
 
 
 @router.get("", response_model=list[TaskRead])
-async def list_tasks(user: User = _current_user, db: AsyncSession = _database):
-    return await task_service.list_tasks(db, user.id)
+async def list_tasks(
+    list_id: uuid.UUID | None = None,
+    user: User = _current_user,
+    db: AsyncSession = _database,
+):
+    return await task_service.list_tasks(db, user.id, list_id)
 
 
 @router.post(
@@ -40,7 +45,10 @@ async def create_tasks(
     user: User = _current_user,
     db: AsyncSession = _database,
 ):
-    return await task_service.create_tasks(db, user.id, data.tasks)
+    try:
+        return await task_service.create_tasks(db, user.id, data)
+    except TaskListNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task list not found") from None
 
 
 @router.patch("/{task_id}", response_model=TaskRead, dependencies=[Depends(verify_origin)])
@@ -77,9 +85,8 @@ async def delete_task(
 )
 async def extract(data: TaskExtractRequest) -> ExtractedTasks:
     try:
-        tasks = await task_service.extract_tasks(data.text, data.timezone)
+        return await task_service.extract_tasks(data.text, data.timezone)
     except LLMError:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "Task extraction failed. Please try again."
         ) from None
-    return ExtractedTasks(tasks=tasks)

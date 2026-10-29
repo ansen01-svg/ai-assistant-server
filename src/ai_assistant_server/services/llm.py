@@ -72,8 +72,9 @@ async def generate_structured[T: BaseModel](
             messages=messages,
             output_format=output_type,
         )
-    except anthropic.APIError as exc:
-        raise LLMError(str(exc)) from exc
+    except anthropic.APIError as e:
+        logger.error("Structured output failed: %s", e.message)
+        raise LLMError("Structured output failed") from e
     except ValidationError as exc:
         raise LLMError(f"Invalid structured output: {exc}") from exc
 
