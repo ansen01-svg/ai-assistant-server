@@ -2,6 +2,7 @@ from .conversation import Conversation
 from .document import Document, DocumentChunk
 from .message import Message
 from .task import Task
+from .task_list import TaskList
 from .user import User
 from .workspace import Workspace, WorkspaceMember
 
@@ -12,6 +13,7 @@ __all__ = [
     "Message",
     "Task",
     "User",
+    "TaskList",
     "Workspace",
     "WorkspaceMember",
 ]

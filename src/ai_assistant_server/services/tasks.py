@@ -7,8 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_assistant_server.models.task import Task
-from ai_assistant_server.schemas.task import ExtractedTask, ExtractedTasks, TaskCreate
+from ai_assistant_server.schemas.task import ExtractedTasks, TaskBulkCreate
 from ai_assistant_server.services.llm import generate_structured
+from ai_assistant_server.services.task_lists import add_task_list, get_task_list
 
 EXTRACT_MODEL = "claude-haiku-5-5"
 
@@ -24,39 +25,46 @@ Rules:
 - If there are no tasks, return an empty list."""
 
 
-async def extract_tasks(text: str, timezone: str) -> list[ExtractedTask]:
+async def extract_tasks(text: str, timezone: str) -> ExtractedTasks:
     today = datetime.now(ZoneInfo(timezone)).date()
     content = f"Today is {today:%A, %Y-%m-%d}.\n\n<text>\n{text}\n</text>"
 
-    result = await generate_structured(
+    return await generate_structured(
         [{"role": "user", "content": content}],
         output_type=ExtractedTasks,
         model=EXTRACT_MODEL,
         system=SYSTEM_PROMPT,
         max_tokens=2048,
     )
-    return result.tasks
 
 
 class TaskNotFoundError(Exception):
     pass
 
 
-async def list_tasks(db: AsyncSession, user_id: uuid.UUID) -> Sequence[Task]:
+async def list_tasks(
+    db: AsyncSession, user_id: uuid.UUID, list_id: uuid.UUID | None
+) -> Sequence[Task]:
+    list_filter = Task.list_id == list_id if list_id else Task.list_id.is_(None)
     stmt = (
         select(Task)
-        .where(Task.user_id == user_id)
-        # "todo" > "done", so desc puts open tasks first
+        .where(Task.user_id == user_id, list_filter)
         .order_by(Task.status.desc(), Task.due_date.asc().nulls_last(), Task.created_at.desc())
         .limit(200)
     )
     return (await db.scalars(stmt)).all()
 
 
-async def create_tasks(db: AsyncSession, user_id: uuid.UUID, items: list[TaskCreate]) -> list[Task]:
-    tasks = [Task(user_id=user_id, **item.model_dump()) for item in items]
+async def create_tasks(db: AsyncSession, user_id: uuid.UUID, data: TaskBulkCreate) -> list[Task]:
+    list_id = data.list_id
+    if data.new_list_name:
+        list_id = (await add_task_list(db, user_id, data.new_list_name)).id
+    elif list_id:
+        await get_task_list(db, user_id, list_id)  # ownership check
+
+    tasks = [Task(user_id=user_id, list_id=list_id, **item.model_dump()) for item in data.tasks]
     db.add_all(tasks)
-    await db.commit()
+    await db.commit()  # list + tasks saved together
     return tasks
 
 
