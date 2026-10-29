@@ -1,6 +1,7 @@
 import uuid
 from datetime import date
 from typing import Literal, Self
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -58,7 +59,21 @@ class TaskBulkCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    status: Status
+    """Only fields that are sent get changed. null clears notes/due_date; list_id null = Inbox."""
+
+    title: str | None = Field(None, min_length=1, max_length=200)
+    notes: str | None = None
+    due_date: date | None = None
+    priority: Literal["low", "medium", "high"] | None = None
+    status: Literal["todo", "done"] | None = None
+    list_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def required_not_null(self) -> TaskUpdate:
+        for name in ("title", "priority", "status"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
 
 
 class TaskRead(BaseModel):

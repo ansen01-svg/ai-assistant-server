@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_assistant_server.models.task import Task
-from ai_assistant_server.schemas.task import ExtractedTasks, TaskBulkCreate
+from ai_assistant_server.schemas.task import ExtractedTasks, TaskBulkCreate, TaskUpdate
 from ai_assistant_server.services.llm import generate_structured
 from ai_assistant_server.services.task_lists import add_task_list, get_task_list
 
@@ -75,12 +75,17 @@ async def get_task(db: AsyncSession, user_id: uuid.UUID, task_id: uuid.UUID) -> 
     return task
 
 
-async def update_task_status(
-    db: AsyncSession, user_id: uuid.UUID, task_id: uuid.UUID, status: str
+async def update_task(
+    db: AsyncSession, user_id: uuid.UUID, task_id: uuid.UUID, data: TaskUpdate
 ) -> Task:
     task = await get_task(db, user_id, task_id)
-    task.status = status  # type: ignore[assignment]  # validated by TaskUpdate
+    changes = data.model_dump(exclude_unset=True)
+    if changes.get("list_id"):
+        await get_task_list(db, user_id, changes["list_id"])  # target list must be the user's
+    for field, value in changes.items():
+        setattr(task, field, value)
     await db.commit()
+    await db.refresh(task)  # reload server-side values (e.g. updated_at)
     return task
 
 
@@ -97,13 +102,16 @@ async def search_tasks(
     query: str | None = None,
     status: str | None = None,
     due_before: date | None = None,
+    list_id: uuid.UUID | None = None,
 ) -> Sequence[Task]:
     stmt = select(Task).where(Task.user_id == user_id)
     if query:
-        stmt = stmt.where(Task.title.icontains(query, autoescape=True))  # escapes % and _
+        stmt = stmt.where(Task.title.icontains(query, autoescape=True))
     if status:
         stmt = stmt.where(Task.status == status)
     if due_before:
         stmt = stmt.where(Task.due_date <= due_before)
+    if list_id:
+        stmt = stmt.where(Task.list_id == list_id)
     stmt = stmt.order_by(Task.status.desc(), Task.due_date.asc().nulls_last()).limit(20)
     return (await db.scalars(stmt)).all()

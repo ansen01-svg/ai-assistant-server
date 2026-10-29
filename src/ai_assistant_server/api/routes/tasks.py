@@ -1,9 +1,16 @@
 import uuid
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_assistant_server.api.dependencies import get_current_user, get_db, verify_origin
+from ai_assistant_server.api.dependencies import (
+    CurrentUser,
+    DbSession,
+    get_current_user,
+    get_db,
+    verify_origin,
+)
 from ai_assistant_server.models.user import User
 from ai_assistant_server.schemas.task import (
     ExtractedTasks,
@@ -52,16 +59,13 @@ async def create_tasks(
 
 
 @router.patch("/{task_id}", response_model=TaskRead, dependencies=[Depends(verify_origin)])
-async def update_task(
-    task_id: uuid.UUID,
-    data: TaskUpdate,
-    user: User = _current_user,
-    db: AsyncSession = _database,
-):
+async def update_task(task_id: UUID, data: TaskUpdate, user: CurrentUser, db: DbSession):
     try:
-        return await task_service.update_task_status(db, user.id, task_id, data.status)
+        return await task_service.update_task(db, user.id, task_id, data)
     except task_service.TaskNotFoundError:
-        raise _not_found() from None
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found") from None
+    except TaskListNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task list not found") from None
 
 
 @router.delete(
