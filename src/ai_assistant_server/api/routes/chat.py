@@ -34,8 +34,11 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
     is_new = data.conversation_id is None
     # Bind the user here: tools must only ever touch this user's data
     tool_runner = partial(run_tool, user.id)
-    today = datetime.now(ZoneInfo(data.timezone))
-    system = f"{chat_service.SYSTEM_PROMPT}\n\nToday is {today:%A, %Y-%m-%d}."
+    now = datetime.now(ZoneInfo(data.timezone))
+    system = (
+        f"{chat_service.SYSTEM_PROMPT}\n\n"
+        f"Now: {now:%A, %Y-%m-%d %H:%M} ({data.timezone}, UTC{now:%z})."
+    )
 
     async def event_stream():
         # Generate the title in parallel with the reply

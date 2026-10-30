@@ -80,6 +80,8 @@ async def update_task(
 ) -> Task:
     task = await get_task(db, user_id, task_id)
     changes = data.model_dump(exclude_unset=True)
+    if "remind_at" in changes:
+        task.reminded_at = None  # new time → fire again
     if changes.get("list_id"):
         await get_task_list(db, user_id, changes["list_id"])  # target list must be the user's
     for field, value in changes.items():

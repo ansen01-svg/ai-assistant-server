@@ -4,7 +4,7 @@ from typing import Literal, Self
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ExtractedTask(BaseModel):
@@ -44,6 +44,7 @@ class TaskCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
     due_date: date | None = None
     priority: Priority = "medium"
+    remind_at: AwareDatetime | None = None
 
 
 class TaskBulkCreate(BaseModel):
@@ -67,6 +68,7 @@ class TaskUpdate(BaseModel):
     priority: Literal["low", "medium", "high"] | None = None
     status: Literal["todo", "done"] | None = None
     list_id: UUID | None = None
+    remind_at: AwareDatetime | None = None
 
     @model_validator(mode="after")
     def required_not_null(self) -> TaskUpdate:
@@ -86,3 +88,4 @@ class TaskRead(BaseModel):
     due_date: date | None
     priority: Priority
     status: Status
+    remind_at: AwareDatetime | None = None

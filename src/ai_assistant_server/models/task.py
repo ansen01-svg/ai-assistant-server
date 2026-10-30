@@ -1,8 +1,8 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Literal
 
-from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ai_assistant_server.db.base import BaseTable
@@ -25,5 +25,7 @@ class Task(BaseTable):
     due_date: Mapped[date | None] = mapped_column(Date)
     priority: Mapped[Literal["low", "medium", "high"]] = mapped_column(String(10), default="medium")
     status: Mapped[Literal["todo", "done"]] = mapped_column(String(10), default="todo")
+    remind_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="tasks")
