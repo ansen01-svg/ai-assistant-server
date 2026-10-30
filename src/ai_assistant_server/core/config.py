@@ -28,10 +28,14 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    vapid_private_key: SecretStr | None = None
+    vapid_public_key: str | None = None
+    vapid_subject: str = "mailto:admin@example.com"
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore[call-arg]  # Values are loaded from environment settings.
 
 
 settings = get_settings()

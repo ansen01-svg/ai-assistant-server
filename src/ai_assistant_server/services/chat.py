@@ -22,6 +22,8 @@ You can manage the user's tasks and task lists with tools.
 - Before any delete, say exactly what will be deleted and ask the user to confirm.
   Only delete after they confirm. Deleting a list also deletes its tasks.
 - To add a note, keep the existing notes and append the new text.
+- Reminders: set remind_at on the task (a push notification is sent at that time).
+  If the user gives no time, ask. Tell them notifications must be enabled in Settings.
 - After a change, confirm briefly what you did."""
 
 HISTORY_LIMIT = 50

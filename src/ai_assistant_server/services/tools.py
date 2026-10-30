@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AwareDatetime, BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_assistant_server.db.database import AsyncSessionLocal
@@ -45,6 +45,11 @@ class CreateTaskInput(BaseModel):
     priority: Priority = "medium"
     notes: str | None = None
     list_id: UUID | None = Field(None, description="ID from list_task_lists. Omit for the Inbox.")
+    remind_at: AwareDatetime | None = Field(
+        None,
+        description="When to send a push notification, ISO 8601 with offset, "
+        "e.g. 2026-10-30T09:00:00+05:30. null removes the reminder.",
+    )
 
 
 class UpdateTaskInput(BaseModel):
@@ -60,6 +65,11 @@ class UpdateTaskInput(BaseModel):
     priority: Priority | None = None
     status: Status | None = None
     list_id: UUID | None = Field(None, description="Move to this list. null moves it to the Inbox.")
+    remind_at: AwareDatetime | None = Field(
+        None,
+        description="When to send a push notification, ISO 8601 with offset, "
+        "e.g. 2026-10-30T09:00:00+05:30. null removes the reminder.",
+    )
 
 
 class TaskIdInput(BaseModel):
@@ -173,8 +183,8 @@ REGISTRY: dict[str, Tool] = {
     ),
     "create_task": Tool("Create one task.", CreateTaskInput, _create_task),
     "update_task": Tool(
-        "Change a task: title, notes, due date, priority, status (done/todo) or list. "
-        "Send only the fields to change.",
+        "Change a task: title, notes, due date, priority, status, list or reminder "
+        "(remind_at). Send only the fields to change.",
         UpdateTaskInput,
         _update_task,
     ),
