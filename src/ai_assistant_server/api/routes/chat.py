@@ -29,6 +29,8 @@ async def chat_stream(data: ChatRequest, user: CurrentUser, db: DbSession):
         conversation, history = await chat_service.prepare_chat(db, user.id, data)
     except chat_service.ConversationNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found") from None
+    except chat_service.DocumentNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found") from None
 
     conversation_id = conversation.id
     is_new = data.conversation_id is None

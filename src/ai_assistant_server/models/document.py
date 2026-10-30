@@ -1,39 +1,48 @@
-from __future__ import annotations
+import uuid
 
-from typing import TYPE_CHECKING
-from uuid import UUID
-
-from sqlalchemy import ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from ai_assistant_server.db.base import BaseTable
 
-if TYPE_CHECKING:
-    from .user import User
+EMBEDDING_DIM = 1024
 
 
 class Document(BaseTable):
     __tablename__ = "documents"
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    file_path: Mapped[str | None] = mapped_column(String(500))
-    mime_type: Mapped[str | None] = mapped_column(String(100))
-    status: Mapped[str] = mapped_column(String(30), default="pending")
-
-    user: Mapped[User] = relationship(back_populates="documents")
-    chunks: Mapped[list[DocumentChunk]] = relationship(
-        back_populates="document", cascade="all, delete-orphan", passive_deletes=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int]
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending | processing | ready | failed
+    error: Mapped[str | None] = mapped_column(Text)
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    extracted_text: Mapped[str] = mapped_column(Text, deferred=True)  # not loaded by list queries
 
 
 class DocumentChunk(BaseTable):
     __tablename__ = "document_chunks"
+    __table_args__ = (
+        Index(
+            "ix_document_chunks_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
-    document_id: Mapped[UUID] = mapped_column(
+    document_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE"), index=True
     )
-    content: Mapped[str] = mapped_column(Text)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     chunk_index: Mapped[int]
-
-    document: Mapped[Document] = relationship(back_populates="chunks")
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))

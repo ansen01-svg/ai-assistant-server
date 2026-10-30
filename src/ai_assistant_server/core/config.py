@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     vapid_public_key: str | None = None
     vapid_subject: str = "mailto:admin@example.com"
 
+    voyage_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=32_000)
     model: ChatModel = "claude-sonnet-5-5"
     timezone: str = "Asia/Kolkata"
+    document_ids: list[UUID] = Field(default_factory=list, max_length=3)
 
     @field_validator("timezone")
     @classmethod

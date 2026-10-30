@@ -26,6 +26,7 @@ class Message(BaseTable):
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
+    attachments: Mapped[list[dict[str, str]] | None] = mapped_column(JSONB)  # [{"id", "filename"}]
     # Full API messages for a turn that used tools; None for plain replies
     tool_messages: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
 

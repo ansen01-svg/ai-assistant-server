@@ -9,7 +9,6 @@ from ai_assistant_server.db.base import BaseTable
 
 if TYPE_CHECKING:
     from .conversation import Conversation
-    from .document import Document
     from .task import Task
     from .workspace import WorkspaceMember
 
@@ -23,9 +22,6 @@ class User(BaseTable):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     conversations: Mapped[list[Conversation]] = relationship(
-        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
-    )
-    documents: Mapped[list[Document]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     tasks: Mapped[list[Task]] = relationship(
