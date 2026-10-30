@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
@@ -13,6 +14,7 @@ from ai_assistant_server.db.database import AsyncSessionLocal
 from ai_assistant_server.models.task import Task
 from ai_assistant_server.models.task_list import TaskList
 from ai_assistant_server.schemas.task import TaskBulkCreate, TaskCreate, TaskRead, TaskUpdate
+from ai_assistant_server.services import documents as document_service
 from ai_assistant_server.services import task_lists as list_service
 from ai_assistant_server.services import tasks as task_service
 from ai_assistant_server.services.llm import ToolParam
@@ -162,6 +164,42 @@ async def _delete_task_list(db: AsyncSession, user_id: UUID, p: ListIdInput) -> 
     return {"deleted": True}
 
 
+class SearchDocumentsInput(BaseModel):
+    query: str = Field(description="Specific search query, e.g. 'refund policy for annual plans'")
+    document_id: uuid.UUID | None = Field(
+        None, description="Limit search to one document (from list_documents)"
+    )
+    top_k: int = Field(5, ge=1, le=10)
+
+
+class ListDocumentsInput(BaseModel):
+    pass
+
+
+async def _search_documents(
+    db: AsyncSession, user_id: uuid.UUID, args: SearchDocumentsInput
+) -> object:
+    hits = await document_service.search_chunks(
+        db, user_id, args.query, top_k=args.top_k, document_id=args.document_id
+    )
+    if not hits:
+        return "No matching content in the user's documents."
+    return [
+        {
+            "source": f"{h.filename}, chunk {h.chunk_index + 1}",
+            "document_id": str(h.document_id),
+            "score": h.score,
+            "content": h.content,
+        }
+        for h in hits
+    ]
+
+
+async def _list_documents(db: AsyncSession, user_id: uuid.UUID, args: ListDocumentsInput) -> object:
+    docs = await document_service.list_documents(db, user_id)
+    return [{"id": str(d.id), "filename": d.filename, "status": d.status} for d in docs]
+
+
 # ---------- Registry ----------
 
 
@@ -200,6 +238,20 @@ REGISTRY: dict[str, Tool] = {
         "Permanently delete a task list AND all its tasks." + CONFIRM,
         ListIdInput,
         _delete_task_list,
+    ),
+    "search_documents": Tool(
+        description=(
+            "Semantic search over the user's uploaded documents. Returns the most relevant "
+            "passages "
+            "with their source. Use for any question that may be answered by the user's files."
+        ),
+        input=SearchDocumentsInput,
+        handler=_search_documents,
+    ),
+    "list_documents": Tool(
+        description="List the user's uploaded documents (id, filename, status).",
+        input=ListDocumentsInput,
+        handler=_list_documents,
     ),
 }
 

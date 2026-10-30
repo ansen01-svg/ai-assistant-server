@@ -1,0 +1,62 @@
+[
+  {
+    "question": "How many vacation days do I get each year?",
+    "file": "leave-policy.md",
+    "expect": "24 days"
+  },
+  {
+    "question": "Can I move unused holidays into next year?",
+    "file": "leave-policy.md",
+    "expect": "5 days"
+  },
+  {
+    "question": "When do I need a medical certificate for being ill?",
+    "file": "leave-policy.md",
+    "expect": "3 consecutive days"
+  },
+  {
+    "question": "What's the daily food allowance on business trips?",
+    "file": "expense-policy.md",
+    "expect": "1,500"
+  },
+  {
+    "question": "Am I allowed to book a better seat on long flights?",
+    "file": "expense-policy.md",
+    "expect": "6 hours"
+  },
+  {
+    "question": "What's the deadline for handing in receipts?",
+    "file": "expense-policy.md",
+    "expect": "30 days"
+  },
+  {
+    "question": "Someone stole my work laptop, what should I do?",
+    "file": "it-security.md",
+    "expect": "1 hour"
+  },
+  {
+    "question": "What are the password length requirements?",
+    "file": "it-security.md",
+    "expect": "14 characters"
+  },
+  {
+    "question": "Who do I tell about a dodgy-looking email?",
+    "file": "it-security.md",
+    "expect": "security@northwind.example"
+  },
+  {
+    "question": "How long is the trial period for new employees?",
+    "file": "onboarding.md",
+    "expect": "6 months"
+  },
+  {
+    "question": "What happens to my information after I delete my account?",
+    "file": "product-faq.md",
+    "expect": "30 days"
+  },
+  {
+    "question": "How much is the paid subscription?",
+    "file": "product-faq.md",
+    "expect": "$12"
+  }
+]

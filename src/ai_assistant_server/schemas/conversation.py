@@ -21,6 +21,11 @@ class ConversationSummary(BaseModel):
     updated_at: datetime
 
 
+class AttachmentRef(BaseModel):
+    id: UUID
+    filename: str
+
+
 class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -32,6 +37,7 @@ class MessageResponse(BaseModel):
     output_tokens: int | None
     cost_usd: float | None
     created_at: datetime
+    attachments: list[AttachmentRef] | None = None
 
 
 class ConversationDetail(ConversationSummary):

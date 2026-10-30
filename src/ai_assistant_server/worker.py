@@ -3,7 +3,8 @@
 import asyncio
 import logging
 from collections.abc import Sequence
-from typing import Any
+from datetime import date
+from uuid import UUID
 
 from sqlalchemy import Row, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,14 +12,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_assistant_server.db.database import AsyncSessionLocal
 from ai_assistant_server.models.task import Task
 from ai_assistant_server.services import push
+from ai_assistant_server.services.documents import process_next_document
 
 logger = logging.getLogger(__name__)
 
-POLL_SECONDS = 30
+POLL_SECONDS = 5
 BATCH_SIZE = 100
 
 
-async def claim_due_reminders(db: AsyncSession) -> Sequence[Row[Any]]:
+async def claim_due_reminders(
+    db: AsyncSession,
+) -> Sequence[Row[UUID, UUID, str, date | None, UUID | None]]:
     """Marks due reminders as sent and returns them. Atomic: safe with several workers."""
     due = (
         select(Task.id)
@@ -59,6 +63,11 @@ async def run() -> None:
             await tick()
         except Exception:
             logger.exception("Reminder tick failed")  # keep running
+        try:
+            while await process_next_document():
+                pass
+        except Exception:
+            logger.exception("Document tick failed")
         await asyncio.sleep(POLL_SECONDS)
 
 
