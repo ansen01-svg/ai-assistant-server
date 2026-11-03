@@ -4,7 +4,7 @@ Loads evals/rag/docs into a dedicated eval user (fresh each run, so chunking/emb
 changes are measured), runs every question through search_chunks and reports hit@1,
 hit@k, MRR and latency. Exits 1 if hit@1 is below --min-hit1.
 
-Usage: uv run python scripts/eval_rag.py [--k 3] [--min-hit1 0.8]
+Usage: uv run python scripts/eval_rag.py [--k 3] [--min-hit1 0.8] [--no-rerank]
 """
 
 import argparse
@@ -63,7 +63,7 @@ async def load_corpus(user_id: uuid.UUID) -> None:
             await asyncio.sleep(1)
 
 
-async def run(k: int, min_hit1: float) -> int:
+async def run(k: int, min_hit1: float, use_rerank: bool) -> int:
     user_id = await get_eval_user_id()
     await load_corpus(user_id)
     cases = json.loads((EVAL_DIR / "questions.json").read_text())
@@ -73,7 +73,9 @@ async def run(k: int, min_hit1: float) -> int:
     async with AsyncSessionLocal() as db:
         for case in cases:
             start = time.perf_counter()
-            hits = await document_service.search_chunks(db, user_id, case["question"], top_k=k)
+            hits = await document_service.search_chunks(
+                db, user_id, case["question"], top_k=k, use_rerank=use_rerank
+            )
             latencies.append(time.perf_counter() - start)
 
             rank = next(
@@ -94,8 +96,9 @@ async def run(k: int, min_hit1: float) -> int:
     hitk = sum(r is not None for r in ranks) / n
     mrr = sum(1 / r for r in ranks if r) / n
     p50 = statistics.median(latencies) * 1000
+    mode = "rerank" if use_rerank else "vector only"
     print(
-        f"\nhit@1 {hit1:.0%} | hit@{k} {hitk:.0%} | MRR {mrr:.2f} | "
+        f"\n[{mode}] hit@1 {hit1:.0%} | hit@{k} {hitk:.0%} | MRR {mrr:.2f} | "
         f"p50 {p50:.0f} ms | {n} questions"
     )
     return 0 if hit1 >= min_hit1 else 1
@@ -105,8 +108,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="RAG retrieval eval")
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--min-hit1", type=float, default=0.8)
+    parser.add_argument("--no-rerank", action="store_true", help="vector search only (baseline)")
     args = parser.parse_args()
-    sys.exit(asyncio.run(run(args.k, args.min_hit1)))
+    sys.exit(asyncio.run(run(args.k, args.min_hit1, not args.no_rerank)))
 
 
 if __name__ == "__main__":

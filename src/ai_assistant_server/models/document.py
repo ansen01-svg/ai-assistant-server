@@ -1,7 +1,7 @@
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import ForeignKey, Index, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ai_assistant_server.db.base import BaseTable
@@ -24,6 +24,12 @@ class Document(BaseTable):
     error: Mapped[str | None] = mapped_column(Text)
     chunk_count: Mapped[int] = mapped_column(default=0)
     extracted_text: Mapped[str] = mapped_column(Text, deferred=True)  # not loaded by list queries
+    kind: Mapped[str] = mapped_column(
+        String(20), default="document", server_default="document"
+    )  # document | image
+    file_data: Mapped[bytes | None] = mapped_column(
+        LargeBinary, deferred=True
+    )  # images + scanned PDFs
 
 
 class DocumentChunk(BaseTable):
