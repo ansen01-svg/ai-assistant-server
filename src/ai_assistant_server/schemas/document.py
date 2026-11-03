@@ -15,3 +15,4 @@ class DocumentRead(BaseModel):
     error: str | None
     chunk_count: int
     created_at: datetime
+    kind: str

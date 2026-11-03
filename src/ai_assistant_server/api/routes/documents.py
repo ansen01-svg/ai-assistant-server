@@ -8,7 +8,13 @@ from ai_assistant_server.api.dependencies import CurrentUser, DbSession
 from ai_assistant_server.models import Document
 from ai_assistant_server.schemas.document import DocumentRead
 from ai_assistant_server.services import documents as document_service
-from ai_assistant_server.services.documents import CONTENT_TYPES, MAX_BYTES, ExtractionError
+from ai_assistant_server.services.documents import (
+    ALLOWED_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    MAX_BYTES,
+    MAX_IMAGE_BYTES,
+    ExtractionError,
+)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -16,11 +22,13 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 @router.post("", status_code=201, response_model=DocumentRead)
 async def upload_document(file: UploadFile, user: CurrentUser, db: DbSession) -> Document:
     filename = Path(file.filename or "").name
-    if Path(filename).suffix.lower() not in CONTENT_TYPES:
-        raise HTTPException(400, "Supported files: PDF, DOCX, TXT, MD")
-    data = await file.read(MAX_BYTES + 1)
-    if len(data) > MAX_BYTES:
-        raise HTTPException(413, "File too large (max 10 MB)")
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, "Supported files: PDF, DOCX, TXT, MD, PNG, JPG, WebP, GIF")
+    limit = MAX_IMAGE_BYTES if ext in IMAGE_EXTENSIONS else MAX_BYTES
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(413, f"File too large (max {limit // (1024 * 1024)} MB)")
     try:
         return await document_service.create_document(db, user.id, filename, data)
     except ExtractionError as e:
