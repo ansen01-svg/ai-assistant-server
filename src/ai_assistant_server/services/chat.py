@@ -45,7 +45,14 @@ Attachments:
     Otherwise follow the note inside the tag.
 - To create tasks from a file: first list the tasks you found (title, due date, priority) and
     suggest a list name. Create them only after the user confirms, using create_task_list (or
-    create_task for one item)."""
+    create_task for one item).
+
+Web search:
+- Use web_search for current events, news, prices, recent releases, or anything that may
+    have changed after your training data.
+- For questions about the user's own files, use search_documents first; don't search the web
+    for their private data.
+- Don't search for things you already know well (definitions, history, how-to basics)."""
 
 HISTORY_LIMIT = 50
 

@@ -7,6 +7,7 @@ from datetime import date
 from typing import Any, Literal
 from uuid import UUID
 
+from anthropic.types import ToolUnionParam
 from pydantic import AwareDatetime, BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +18,6 @@ from ai_assistant_server.schemas.task import TaskBulkCreate, TaskCreate, TaskRea
 from ai_assistant_server.services import documents as document_service
 from ai_assistant_server.services import task_lists as list_service
 from ai_assistant_server.services import tasks as task_service
-from ai_assistant_server.services.llm import ToolParam
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +200,13 @@ async def _list_documents(db: AsyncSession, user_id: uuid.UUID, args: ListDocume
     return [{"id": str(d.id), "filename": d.filename, "status": d.status} for d in docs]
 
 
+# Anthropic runs these server-side: no handler, not in REGISTRY
+SERVER_TOOLS: list[ToolUnionParam] = [
+    {"type": "web_search_20250305", "name": "web_search", "max_uses": 5},
+    {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 3},
+]
+
+
 # ---------- Registry ----------
 
 
@@ -255,9 +262,12 @@ REGISTRY: dict[str, Tool] = {
     ),
 }
 
-TOOLS: list[ToolParam] = [
-    {"name": name, "description": t.description, "input_schema": t.input.model_json_schema()}
-    for name, t in REGISTRY.items()
+TOOLS: list[ToolUnionParam] = [
+    *(
+        {"name": name, "description": t.description, "input_schema": t.input.model_json_schema()}
+        for name, t in REGISTRY.items()
+    ),
+    *SERVER_TOOLS,
 ]
 
 
