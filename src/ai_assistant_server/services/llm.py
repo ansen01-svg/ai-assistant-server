@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
@@ -84,6 +85,7 @@ async def stream_chat(
     for round_ in range(MAX_TOOL_ROUNDS):
         last_round = round_ == MAX_TOOL_ROUNDS - 1
         separator = "\n\n" if any(round_texts) else ""
+        t0 = time.monotonic()
         try:
             async with client.messages.stream(
                 model=model,
@@ -95,6 +97,8 @@ async def stream_chat(
                 tool_choice={"type": "none"} if last_round else {"type": "auto"},
             ) as stream:
                 async for event in stream:
+                    logger.info("event %s %.1fs", event.type, time.monotonic() - t0)  # ← temporary
+
                     if event.type == "text":
                         yield separator + event.text
                         separator = ""

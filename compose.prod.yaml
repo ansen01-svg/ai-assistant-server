@@ -1,0 +1,40 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ai_assistant
+    command: postgres -c shared_buffers=128MB
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    image: bobby-api
+    restart: unless-stopped
+    env_file: .env.prod
+    depends_on: { db: { condition: service_healthy } }
+
+  worker:
+    image: bobby-api
+    restart: unless-stopped
+    env_file: .env.prod
+    command: python -m ai_assistant_server.worker
+    depends_on: { db: { condition: service_healthy } }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+
+volumes:
+  pgdata:
+  caddy_data:
