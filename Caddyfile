@@ -1,3 +1,8 @@
 api.ansenbey.com {
     reverse_proxy api:8000
 }
+
+# task-portal-ai (separate compose project on the same Docker network)
+ai.workboard.goodair.ai {
+    reverse_proxy ai-api:8000
+}
